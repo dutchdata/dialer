@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dialer</title>
+<link rel="icon" href="icon-256.png">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Dialer: AI for phone chores. A personal Mac app that places calls through the owner's iPhone, either personally or delegated to AI.">
+<meta property="og:title" content="Dialer">
+<meta property="og:description" content="AI for phone chores. A personal Mac app.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dialer.dutchdata.io/">
+<meta property="og:image" content="https://dialer.dutchdata.io/video/poster.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root {
+    --bg-0: #0b1024; --bg-1: #161a3a; --violet: #9478ff; --sky: #5ccdff; --green: #3de099;
+    --text: rgba(255,255,255,.94); --text-2: rgba(255,255,255,.68); --text-3: rgba(255,255,255,.46);
+    --card: rgba(255,255,255,.06); --line: rgba(255,255,255,.14); --radius: 18px;
+    --accent: linear-gradient(135deg, var(--sky), var(--violet));
+    --font: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+    --round: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+    --gutter: clamp(16px, 4vw, 40px); --max: 1080px; --gap: clamp(28px, 4vw, 44px);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; font-family: var(--font); font-size: 16px; line-height: 1.5; color: var(--text);
+    background: linear-gradient(160deg, var(--bg-0), var(--bg-1)) fixed; background-color: var(--bg-0);
+    min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+  }
+  .glow { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .glow::before, .glow::after { content: ""; position: absolute; border-radius: 50%; filter: blur(90px); }
+  .glow::before { width: 60vmax; height: 60vmax; left: -20vmax; top: -24vmax; background: radial-gradient(circle, rgba(148,120,255,.40), transparent 65%); }
+  .glow::after { width: 55vmax; height: 55vmax; right: -22vmax; top: 18vmax; background: radial-gradient(circle, rgba(92,205,255,.26), transparent 65%); }
+  .wrap { width: 100%; max-width: var(--max); margin-left: auto; margin-right: auto; padding-left: var(--gutter); padding-right: var(--gutter); }
+  .glass { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); -webkit-backdrop-filter: blur(24px) saturate(140%); backdrop-filter: blur(24px) saturate(140%); }
+
+  /* Masthead: small logo, name, one line */
+  header { display: flex; align-items: center; gap: 16px; padding-top: clamp(28px, 5vw, 56px); }
+  header img { width: 56px; height: 56px; flex: none; filter: drop-shadow(0 8px 18px rgba(148,120,255,.35)); }
+  header h1 { font-family: var(--round); font-size: 30px; line-height: 1.1; letter-spacing: -.02em; margin: 0; }
+  header p { margin: 2px 0 0; color: var(--text-2); font-size: 17px; }
+  .pill { margin-left: auto; font-size: 13px; color: var(--text-2); padding: 6px 13px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); white-space: nowrap; }
+
+  main > * { margin-top: var(--gap); }
+  main > :first-child { margin-top: clamp(20px, 3vw, 30px); }
+
+  /* Video */
+  .video-frame { padding: clamp(6px, 1vw, 10px); border-radius: 26px; box-shadow: 0 40px 100px rgba(0,0,0,.5); }
+  video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; border-radius: 18px; background: #070a18; }
+  .note { color: var(--text-3); font-size: 13px; margin: 10px 2px 0; }
+
+  /* Screenshot carousel: same column as the video, scrolls inside it */
+  .carousel { position: relative; }
+  .strip { --l: 0px; --r: 0px; display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0; padding: 0; list-style: none;
+    border-radius: var(--radius); scrollbar-width: none; overscroll-behavior-x: contain;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--l), #000 calc(100% - var(--r)), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 var(--l), #000 calc(100% - var(--r)), transparent); }
+  .strip::-webkit-scrollbar { display: none; }
+  .shot { flex: 0 0 min(86%, 620px); scroll-snap-align: start; }
+  .shot button { all: unset; display: block; width: 100%; cursor: zoom-in; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); box-sizing: border-box; transition: border-color .2s ease; }
+  .shot button:hover { border-color: rgba(255,255,255,.34); }
+  .shot button:focus-visible { outline: 2px solid var(--sky); outline-offset: -2px; }
+  .shot img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
+  .carousel .car-prev, .carousel .car-next { top: 50%; transform: translateY(-50%); background: rgba(16,20,44,.78); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  .carousel .car-prev { left: 10px; } .carousel .car-next { right: 10px; }
+  .carousel .round-btn[hidden] { display: none; }
+  @media (hover: none) { .carousel .round-btn { display: none; } }
+
+  /* Facts card, nutrition-label style */
+  .facts { padding: clamp(18px, 3vw, 30px); max-width: 760px; margin-left: auto; margin-right: auto; }
+  .facts h2 { font-family: var(--round); font-size: 34px; line-height: 1; letter-spacing: -.02em; margin: 0 0 4px; }
+  .facts .serving { color: var(--text-2); font-size: 14px; margin: 0; }
+  .facts hr { border: 0; height: 8px; background: var(--text); opacity: .9; margin: 12px 0 0; border-radius: 1px; }
+  .facts hr.thin { height: 3px; margin-top: 0; }
+  .facts h3 { font-family: var(--round); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); margin: 0; padding: 12px 0 8px; }
+  .row { display: grid; grid-template-columns: 190px 1fr; gap: 14px; padding: 9px 0; border-top: 1px solid rgba(255,255,255,.16); font-size: 15px; }
+  .row b { font-weight: 650; }
+  .row span { color: var(--text-2); }
+  .fine { color: var(--text-3); font-size: 13px; margin: 12px 0 0; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.16); }
+
+  footer { height: calc(var(--gap) + env(safe-area-inset-bottom)); }
+
+  /* Lightbox */
+  .lightbox { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; padding: 56px 16px 24px; background: rgba(6,9,22,.88); -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px); }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: min(100%, 1500px); max-height: calc(100vh - 100px); border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 40px 120px rgba(0,0,0,.6); }
+  .round-btn { all: unset; box-sizing: border-box; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: var(--card); border: 1px solid var(--line); color: var(--text); position: absolute; }
+  .round-btn:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
+  .round-btn svg { width: 18px; height: 18px; }
+  .lb-close { top: 14px; right: 14px; } .lb-prev, .lb-next { top: 50%; transform: translateY(-50%); } .lb-prev { left: 14px; } .lb-next { right: 14px; }
+
+  @media (max-width: 640px) {
+    header { flex-wrap: wrap; } .pill { margin-left: 80px; }
+    .row { grid-template-columns: 1fr; gap: 1px; }
+    .lb-prev, .lb-next { top: auto; bottom: 18px; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="glow" aria-hidden="true"></div>
+
+<header class="wrap">
+  <img src="icon-256.png" width="56" height="56" alt="">
+  <div><h1>Dialer</h1><p>AI for phone chores.</p></div>
+  <span class="pill">Personal build, for now</span>
+</header>
+
+<main>
+  <section class="wrap" aria-label="Demo video">
+    <div class="video-frame glass">
+      <video controls playsinline preload="metadata" poster="video/poster.jpg">
+        <source src="video/dialer-demo.mp4" type="video/mp4">
+      </video>
+    </div>
+    <p class="note">27 s. The conversation in the video and screenshots is staged: synthetic voices, fictional business, invented contacts.</p>
+  </section>
+
+  <section class="wrap" aria-label="Screenshots">
+    <div class="carousel">
+      <ul class="strip" id="strip">
+        <li class="shot"><button type="button"><img src="screenshots/web/01-agent-call.jpg" data-full="screenshots/web/01-agent-call@2x.jpg" width="1280" height="800" alt="A call delegated to the AI, with live transcript and call controls" loading="lazy"></button></li>
+        <li class="shot"><button type="button"><img src="screenshots/web/02-new-call.jpg" data-full="screenshots/web/02-new-call@2x.jpg" width="1280" height="800" alt="New call: contact, task for the AI, sharing role, limits" loading="lazy"></button></li>
+        <li class="shot"><button type="button"><img src="screenshots/web/03-take-over.jpg" data-full="screenshots/web/03-take-over@2x.jpg" width="1280" height="800" alt="Take over is active: the user has the line" loading="lazy"></button></li>
+        <li class="shot"><button type="button"><img src="screenshots/web/04-information.jpg" data-full="screenshots/web/04-information@2x.jpg" width="1280" height="800" alt="Information tiers 0 to 3" loading="lazy"></button></li>
+        <li class="shot"><button type="button"><img src="screenshots/web/05-contacts.jpg" data-full="screenshots/web/05-contacts@2x.jpg" width="1280" height="800" alt="Contacts with a role and notes" loading="lazy"></button></li>
+        <li class="shot"><button type="button"><img src="screenshots/web/06-history.jpg" data-full="screenshots/web/06-history@2x.jpg" width="1280" height="800" alt="Call history with transcript and recordings" loading="lazy"></button></li>
+      </ul>
+      <button class="round-btn car-prev" id="carPrev" type="button" aria-label="Previous screenshots" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="round-btn car-next" id="carNext" type="button" aria-label="More screenshots"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </section>
+
+  <section class="wrap" aria-label="Facts">
+    <div class="facts glass">
+      <h2>Dialer Facts</h2>
+      <p class="serving">Version 0.2 · tested on macOS 15 · one user, one call at a time</p>
+      <hr>
+      <h3>What it does</h3>
+      <div class="row"><b>Calls</b><span>Placed from the Mac through the owner's iPhone and carrier line. No calling service, no second number.</span></div>
+      <div class="row"><b>Two modes</b><span>Make the call personally, or delegate the call to AI with a typed task.</span></div>
+      <div class="row"><b>AI voice</b><span>A live voice model from OpenAI. It waits through ringing and greetings, talks, leaves voicemail, then ends the call.</span></div>
+      <div class="row"><b>During an AI call</b><span>Live transcript, listen in, take over and hand back, keypad tones, hold, end.</span></div>
+      <div class="row"><b>Limits</b><span>Spending and time limit per AI call.</span></div>
+      <div class="row"><b>Information</b><span>Personal facts in four tiers. A role per contact decides what the AI may share. Tier 3 is never given to the AI. Tiers 2 and 3 are stored in the macOS Keychain.</span></div>
+      <div class="row"><b>Contacts</b><span>Read from macOS Contacts. Dialer adds a role and notes for the AI.</span></div>
+      <div class="row"><b>History</b><span>Both sides of each call are recorded. AI calls keep a transcript and cost.</span></div>
+      <hr class="thin">
+      <h3>Tested on real calls</h3>
+      <div class="row"><b>AI calls</b><span>Talked with people who answered.</span></div>
+      <div class="row"><b>Voicemail</b><span>Left a voicemail and ended the call on its own. Tested with the command-line version, before the app.</span></div>
+      <div class="row"><b>Listen in, take over</b><span>Owner heard both sides live, took over mid-call, and handed back.</span></div>
+      <div class="row"><b>Personal calls</b><span>Placed from the app window.</span></div>
+      <div class="row"><b>Time limit</b><span>A five-minute limit ended a call at five minutes.</span></div>
+      <div class="row"><b>Estimated cost</b><span>$0.03 and $0.05 for two calls of about a minute, $0.25 for the five-minute call. From OpenAI's reported usage at list price.</span></div>
+      <hr class="thin">
+      <h3>Technicals</h3>
+      <div class="row"><b>Built with</b><span>Swift and C. A native Mac app and a small audio driver.</span></div>
+      <div class="row"><b>Why personal</b><span>It uses parts of macOS that App Store apps can't, so the Mac has to be set up to allow it.</span></div>
+      <div class="row"><b>Requires</b><span>An iPhone on the same Apple Account with "Calls on Other Devices" on, and an OpenAI API key for AI calls.</span></div>
+      <div class="row"><b>Sent to OpenAI</b><span>On AI calls only: the call audio, the task, the contact's notes, the owner's name, and the facts the role allows.</span></div>
+      <div class="row"><b>Price</b><span>Not for sale.</span></div>
+    </div>
+  </section>
+</main>
+<footer></footer>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Screenshot viewer">
+  <button class="round-btn lb-close" id="lbClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <button class="round-btn lb-prev" id="lbPrev" type="button" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <img id="lbImg" alt="">
+  <button class="round-btn lb-next" id="lbNext" type="button" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+</div>
+
+<script>
+(function () {
+  var shots = Array.prototype.slice.call(document.querySelectorAll('.shot button'));
+  var box = document.getElementById('lightbox'), img = document.getElementById('lbImg'), i = 0;
+  function show(k) { i = (k + shots.length) % shots.length; var s = shots[i].querySelector('img'); img.src = s.getAttribute('data-full') || s.src; img.alt = s.alt; }
+  function open(k) { show(k); box.classList.add('open'); document.body.style.overflow = 'hidden'; }
+  function close() { box.classList.remove('open'); document.body.style.overflow = ''; }
+  shots.forEach(function (b, k) { b.addEventListener('click', function () { open(k); }); });
+  document.getElementById('lbClose').addEventListener('click', close);
+  document.getElementById('lbPrev').addEventListener('click', function (e) { e.stopPropagation(); show(i - 1); });
+  document.getElementById('lbNext').addEventListener('click', function (e) { e.stopPropagation(); show(i + 1); });
+  box.addEventListener('click', function (e) { if (e.target === box) close(); });
+  document.addEventListener('keydown', function (e) {
+    if (!box.classList.contains('open')) return;
+    if (e.key === 'Escape') close(); else if (e.key === 'ArrowLeft') show(i - 1); else if (e.key === 'ArrowRight') show(i + 1);
+  });
+  var strip = document.getElementById('strip'), prev = document.getElementById('carPrev'), next = document.getElementById('carNext');
+  function edges() {
+    var max = strip.scrollWidth - strip.clientWidth, x = strip.scrollLeft;
+    prev.hidden = x < 4; next.hidden = x > max - 4;
+    strip.style.setProperty('--l', prev.hidden ? '0px' : '36px'); strip.style.setProperty('--r', next.hidden ? '0px' : '36px');
+  }
+  function page(dir) { strip.scrollBy({ left: dir * (strip.querySelector('.shot').offsetWidth + 16), behavior: 'smooth' }); }
+  prev.addEventListener('click', function () { page(-1); }); next.addEventListener('click', function () { page(1); });
+  strip.addEventListener('scroll', edges, { passive: true }); window.addEventListener('resize', edges); edges();
+  var x0 = null;
+  box.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+  box.addEventListener('touchend', function (e) { if (x0 === null) return; var dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) show(i + (dx < 0 ? 1 : -1)); x0 = null; });
+})();
+</script>
+</body>
+</html>
